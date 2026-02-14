@@ -22,16 +22,15 @@ def format_currency(value):
         return f"{uk}억원"
     return f"{val:,}만원"
 
-# 카드 HTML 생성 함수 (공백 문제 완벽 해결 버전)
+# 카드 HTML 생성 함수 (공백 제거 유지)
 def create_card_html(title, total_flow, diff_val, 
                      my_money, deposit, loan, investable, 
                      income_invest, expense_main, expense_loan, 
                      income_capital=0, is_monthly=False, is_jeonse=False, is_best=False):
     
-    # 1. 자금 부족 체크 (Impossible 상태)
+    # 1. 자금 부족 체크
     if investable < 0:
         shortfall = abs(investable)
-        # 중요: 아래 HTML 코드는 들여쓰기 없이 왼쪽 끝에 붙어있어야 함
         return f"""<div style='background-color:#fff5f5; border:1px solid #ffcccc; border-radius:15px; padding:20px; height:100%; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
 <h3 style='margin:0; font-size:1.1em; color:#555;'>{title}</h3>
 <div style='font-size:2.5em; margin:15px 0;'>🚫</div>
@@ -58,14 +57,14 @@ def create_card_html(title, total_flow, diff_val,
     else:
         diff_html = f"<span style='color:#c53030; font-size:0.85em; font-weight:bold;'>▼ {abs(diff_val):,} 더 손해</span>"
 
-    # 굴리는 돈 박스 (들여쓰기 제거됨)
+    # 굴리는 돈 박스
     formula_html = f"""<div style='background-color:#f7fafc; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85em; color:#4a5568; text-align:center; border:1px solid #edf2f7;'>
 <div style='font-weight:600; margin-bottom:4px; color:#718096;'>💰 굴리는 돈</div>
 {int(my_money):,} - ({int(deposit):,} - {int(loan):,})<br>
 = <b style='color:#2d3748;'>{int(investable):,} 만원</b>
 </div>"""
 
-    # 상세 내역 (Flexbox 활용) - 여기는 한 줄씩이라 괜찮지만 안전하게 작성
+    # 상세 내역 (Flexbox 활용)
     row_style = "display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.9em;"
     
     details_html = ""
@@ -85,7 +84,7 @@ def create_card_html(title, total_flow, diff_val,
         details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출원리금</span> <span style='font-weight:500;'>{abs(int(expense_loan)):,} 만원</span></div>"
         details_html += "<div style='visibility:hidden; height:21px;'>.</div>" 
 
-    # 최종 HTML 조립 (중요: 여기도 들여쓰기 없이 왼쪽 벽에 붙임)
+    # 최종 HTML 조립
     html = f"""<div style='position:relative; background-color:{bg_color}; border:{border_style}; border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; box-shadow:{shadow}; transition: transform 0.2s;'>
 {badge_html}
 <h3 style='margin-top:5px; text-align:center; font-size:1.1em; color:#4a5568; font-weight:600;'>{title}</h3>
@@ -105,7 +104,7 @@ def create_card_html(title, total_flow, diff_val,
 
 
 st.title("🏠 이성적 주거 판단기")
-st.markdown("##### **투자 수익**과 **주거 비용**을 합산하여 연간 **순현금흐름**을 시뮬레이션합니다.")
+st.markdown("##### **투자/자산 상승분**과 **주거 비용**을 합산하여 **연간 총 경제적 이익**을 시뮬레이션합니다.")
 
 
 # --- 1. 입력 섹션 ---
@@ -117,7 +116,6 @@ with st.expander("📝 자산 및 매물 정보 입력 (클릭해서 펼치기)"
         my_money = st.number_input("내 가용 현금 (만원)", value=10000, step=1000, format="%d")
         st.caption(f"💰 {format_currency(my_money)}")
     with col_asset2:
-        # [위치 변경] 대출 금리
         loan_rate_pct = st.number_input("대출 금리 (%)", value=4.0, step=0.1, format="%.1f")
         loan_rate = loan_rate_pct / 100
 
@@ -126,7 +124,6 @@ with st.expander("📝 자산 및 매물 정보 입력 (클릭해서 펼치기)"
         stock_return_pct = st.number_input("투자 기대 수익률 (%)", value=4.0, step=0.1, format="%.1f")
         stock_return = stock_return_pct / 100
     with col_rate2:
-        # [위치 변경 & 이름 변경] 집값 기대 상승률
         house_growth_pct = st.number_input("집값 기대 상승률 (%)", value=4.0, step=0.1, format="%.1f")
         house_growth = house_growth_pct / 100
         
@@ -205,8 +202,7 @@ expense_loan_buying = -(yearly_payment)
 total_flow_buying = income_invest_buying + expense_loan_buying + income_capital_gain
 
 
-# --- 3. 승자 결정 (UI 그리기 전에 먼저 계산) ---
-# 자금 부족 여부 체크
+# --- 3. 승자 결정 ---
 valid_options = {}
 if surplus_cash_monthly >= 0: valid_options["monthly"] = total_flow_monthly
 if surplus_cash_jeonse >= 0: valid_options["jeonse"] = total_flow_jeonse
@@ -220,8 +216,8 @@ if valid_options:
 # --- 4. 결과 출력 ---
 st.divider()
 
-st.subheader("📊 연간 현금흐름 비교")
-st.caption("※ 순현금흐름(Net Cash Flow)이 높을수록 자산 증식에 유리합니다.")
+st.subheader("📊 연간 총 경제적 이익 비교")
+st.caption("※ 경제적 이익 = 실제 현금 유출입(비용) + 자산 가치 변동분(집값/투자평가익)")
 
 # 비교 기준값 (월세 기준)
 base_flow = total_flow_monthly if surplus_cash_monthly >= 0 else 0

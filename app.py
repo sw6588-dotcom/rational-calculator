@@ -121,16 +121,18 @@ with st.expander("📝 자산 및 매물 정보 입력 (클릭해서 펼치기)"
         my_money = st.number_input("내 가용 현금 (만원)", value=10000, step=1000, format="%d")
         st.caption(f"💰 {format_currency(my_money)}")
     with col_asset2:
-        house_growth_pct = st.number_input("기대 집값 상승률 (%)", value=4.0, step=0.1, format="%.1f")
-        house_growth = house_growth_pct / 100
+        # [위치 변경] 대출 금리가 위로 올라옴
+        loan_rate_pct = st.number_input("대출 금리 (%)", value=4.0, step=0.1, format="%.1f")
+        loan_rate = loan_rate_pct / 100
 
     col_rate1, col_rate2 = st.columns(2)
     with col_rate1:
         stock_return_pct = st.number_input("투자 기대 수익률 (%)", value=4.0, step=0.1, format="%.1f")
         stock_return = stock_return_pct / 100
     with col_rate2:
-        loan_rate_pct = st.number_input("대출 금리 (%)", value=4.0, step=0.1, format="%.1f")
-        loan_rate = loan_rate_pct / 100
+        # [위치 변경 & 이름 변경] 집값 기대 상승률이 아래로 내려옴
+        house_growth_pct = st.number_input("집값 기대 상승률 (%)", value=4.0, step=0.1, format="%.1f")
+        house_growth = house_growth_pct / 100
         
     st.divider()
     

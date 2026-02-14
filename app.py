@@ -22,7 +22,7 @@ def format_currency(value):
         return f"{uk}억원"
     return f"{val:,}만원"
 
-# 카드 HTML 생성 함수 (디자인 업그레이드)
+# 카드 HTML 생성 함수 (공백 문제 해결: 문자열을 왼쪽 끝으로 붙임)
 def create_card_html(title, total_flow, diff_val, 
                      my_money, deposit, loan, investable, 
                      income_invest, expense_main, expense_loan, 
@@ -32,15 +32,15 @@ def create_card_html(title, total_flow, diff_val,
     if investable < 0:
         shortfall = abs(investable)
         return f"""
-        <div style='background-color:#fff5f5; border:1px solid #ffcccc; border-radius:15px; padding:20px; height:100%; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
-            <h3 style='margin:0; font-size:1.1em; color:#555;'>{title}</h3>
-            <div style='font-size:2.5em; margin:15px 0;'>🚫</div>
-            <strong style='color:#e53e3e; font-size:1.0em;'>자금 부족</strong>
-            <p style='color:#718096; font-size:0.85em; margin-top:10px;'>
-                <b>{shortfall:,}만원</b> 부족
-            </p>
-        </div>
-        """
+<div style='background-color:#fff5f5; border:1px solid #ffcccc; border-radius:15px; padding:20px; height:100%; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+    <h3 style='margin:0; font-size:1.1em; color:#555;'>{title}</h3>
+    <div style='font-size:2.5em; margin:15px 0;'>🚫</div>
+    <strong style='color:#e53e3e; font-size:1.0em;'>자금 부족</strong>
+    <p style='color:#718096; font-size:0.85em; margin-top:10px;'>
+        <b>{shortfall:,}만원</b> 부족
+    </p>
+</div>
+"""
 
     # 2. 디자인 스타일 설정
     border_style = "2px solid #ffd700" if is_best else "1px solid #e2e8f0"
@@ -59,13 +59,13 @@ def create_card_html(title, total_flow, diff_val,
     else:
         diff_html = f"<span style='color:#c53030; font-size:0.85em; font-weight:bold;'>▼ {abs(diff_val):,} 더 손해</span>"
 
-    # 굴리는 돈 박스 디자인
+    # 굴리는 돈 박스 디자인 (들여쓰기 제거)
     formula_html = f"""
-    <div style='background-color:#f7fafc; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85em; color:#4a5568; text-align:center; border:1px solid #edf2f7;'>
-        <div style='font-weight:600; margin-bottom:4px; color:#718096;'>💰 굴리는 돈</div>
-        {int(my_money):,} - ({int(deposit):,} - {int(loan):,})<br>
-        = <b style='color:#2d3748;'>{int(investable):,} 만원</b>
-    </div>"""
+<div style='background-color:#f7fafc; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85em; color:#4a5568; text-align:center; border:1px solid #edf2f7;'>
+    <div style='font-weight:600; margin-bottom:4px; color:#718096;'>💰 굴리는 돈</div>
+    {int(my_money):,} - ({int(deposit):,} - {int(loan):,})<br>
+    = <b style='color:#2d3748;'>{int(investable):,} 만원</b>
+</div>"""
 
     # 상세 내역 디자인 (Flexbox 활용)
     row_style = "display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.9em;"
@@ -87,7 +87,7 @@ def create_card_html(title, total_flow, diff_val,
         details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출원리금</span> <span style='font-weight:500;'>{abs(int(expense_loan)):,} 만원</span></div>"
         details_html += "<div style='visibility:hidden; height:21px;'>.</div>" 
 
-    # 최종 HTML 조립
+    # 최종 HTML 조립 (들여쓰기 완전 제거)
     html = f"""
 <div style='position:relative; background-color:{bg_color}; border:{border_style}; border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; box-shadow:{shadow}; transition: transform 0.2s;'>
     {badge_html}

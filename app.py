@@ -1,7 +1,7 @@
 import streamlit as st
 
 # --- 0. 설정 및 함수 ---
-st.set_page_config(page_title="이성적 주거 판단기", layout="centered")
+st.set_page_config(page_title="주거비용 계산기", layout="centered")
 
 def format_currency(value):
     """만원 단위를 억/만원 단위로 변환 + 콤마 포맷팅"""

@@ -1,7 +1,15 @@
 import streamlit as st
 
 # --- 0. 설정 및 함수 ---
-st.set_page_config(page_title="주거비용 계산기", layout="centered")
+st.set_page_config(page_title="이성적 주거 판단기", layout="centered")
+
+# CSS로 전체적인 폰트나 여백 미세 조정
+st.markdown("""
+<style>
+    .stExpander { border: none !important; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 10px; }
+    div[data-testid="stMetricValue"] { font-size: 1.5rem; }
+</style>
+""", unsafe_allow_html=True)
 
 def format_currency(value):
     """만원 단위를 억/만원 단위로 변환 + 콤마 포맷팅"""
@@ -14,80 +22,85 @@ def format_currency(value):
         return f"{uk}억원"
     return f"{val:,}만원"
 
-# 카드 HTML 생성 함수
+# 카드 HTML 생성 함수 (디자인 업그레이드)
 def create_card_html(title, total_flow, diff_val, 
                      my_money, deposit, loan, investable, 
                      income_invest, expense_main, expense_loan, 
-                     income_capital=0, is_monthly=False, is_jeonse=False):
+                     income_capital=0, is_monthly=False, is_jeonse=False, is_best=False):
     
-    # 1. 자금 부족 체크 (Impossible 상태)
+    # 1. 자금 부족 체크
     if investable < 0:
         shortfall = abs(investable)
         return f"""
-        <div style='border:2px solid #ff4b4b; background-color:#fff5f5; border-radius:10px; padding:15px; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;'>
-            <h3 style='margin:0; font-size:1.2em; color:#333;'>{title}</h3>
-            <div style='font-size:3em; margin:20px 0;'>🚫</div>
-            <strong style='color:#ff4b4b; font-size:1.1em;'>자금 부족 (구매 불가)</strong>
-            <p style='color:#555; font-size:0.9em; margin-top:10px;'>
-                필요한 돈보다<br>
-                <b>{shortfall:,}만원</b>이 부족합니다.
+        <div style='background-color:#fff5f5; border:1px solid #ffcccc; border-radius:15px; padding:20px; height:100%; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+            <h3 style='margin:0; font-size:1.1em; color:#555;'>{title}</h3>
+            <div style='font-size:2.5em; margin:15px 0;'>🚫</div>
+            <strong style='color:#e53e3e; font-size:1.0em;'>자금 부족</strong>
+            <p style='color:#718096; font-size:0.85em; margin-top:10px;'>
+                <b>{shortfall:,}만원</b> 부족
             </p>
         </div>
         """
 
-    # 2. 정상 계산 로직
-    # 색상 및 부호 설정
-    color_flow = "black"
-    if total_flow > 0: color_flow = "blue"
-    elif total_flow < 0: color_flow = "red"
+    # 2. 디자인 스타일 설정
+    border_style = "2px solid #ffd700" if is_best else "1px solid #e2e8f0"
+    bg_color = "#ffffff"
+    shadow = "0 8px 16px rgba(0,0,0,0.1)" if is_best else "0 4px 6px rgba(0,0,0,0.05)"
+    badge_html = "<div style='position:absolute; top:-12px; right:15px; background-color:#ffd700; color:#fff; padding:4px 10px; border-radius:12px; font-size:0.8em; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.2);'>🏆 BEST</div>" if is_best else ""
     
-    # 차이(Delta) 표시 텍스트
+    # 색상 설정
+    color_flow = "#2b6cb0" if total_flow > 0 else "#c53030" # 파랑 / 빨강
+    
+    # 차이(Delta) 표시
     if diff_val == 0:
-        diff_html = "<span style='color:gray; font-size:0.9em'>- (기준)</span>"
+        diff_html = "<span style='color:#a0aec0; font-size:0.85em'>- (기준)</span>"
     elif diff_val > 0:
-        diff_html = f"<span style='color:blue; font-size:0.9em'>▲ {diff_val:,}만원 더 이득</span>"
+        diff_html = f"<span style='color:#2b6cb0; font-size:0.85em; font-weight:bold;'>▲ {diff_val:,} 더 이득</span>"
     else:
-        diff_html = f"<span style='color:red; font-size:0.9em'>▼ {abs(diff_val):,}만원 더 손해</span>"
+        diff_html = f"<span style='color:#c53030; font-size:0.85em; font-weight:bold;'>▼ {abs(diff_val):,} 더 손해</span>"
 
-    # 굴리는 돈 수식
+    # 굴리는 돈 박스 디자인
     formula_html = f"""
-<div style='background-color:#f9f9f9; padding:8px; border-radius:5px; margin-bottom:10px; font-size:0.85em; color:#333; text-align:center;'>
-    <strong>💰 굴리는 돈 계산</strong><br>
-    {int(my_money):,} - ({int(deposit):,} - {int(loan):,})<br>
-    = <b>{int(investable):,} 만원</b>
-</div>"""
+    <div style='background-color:#f7fafc; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85em; color:#4a5568; text-align:center; border:1px solid #edf2f7;'>
+        <div style='font-weight:600; margin-bottom:4px; color:#718096;'>💰 굴리는 돈</div>
+        {int(my_money):,} - ({int(deposit):,} - {int(loan):,})<br>
+        = <b style='color:#2d3748;'>{int(investable):,} 만원</b>
+    </div>"""
 
-    # 상세 내역 생성
+    # 상세 내역 디자인 (Flexbox 활용)
+    row_style = "display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.9em;"
+    
     details_html = ""
     # 투자수익 (공통)
-    details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:blue'>+ 투자수익</span> <span>{int(income_invest):,} 만원</span></div>"
+    details_html += f"<div style='{row_style}'><span style='color:#4299e1;'>+ 투자수익</span> <span style='font-weight:500;'>{int(income_invest):,} 만원</span></div>"
     
     if is_monthly:
-        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 월세지출</span> <span>{abs(int(expense_main)):,} 만원</span></div>"
-        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 대출이자</span> <span>{abs(int(expense_loan)):,} 만원</span></div>"
-        details_html += "<div style='visibility:hidden;'>.</div>" 
+        details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 월세지출</span> <span style='font-weight:500;'>{abs(int(expense_main)):,} 만원</span></div>"
+        details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출이자</span> <span style='font-weight:500;'>{abs(int(expense_loan)):,} 만원</span></div>"
+        details_html += "<div style='visibility:hidden; height:21px;'>.</div>" 
     elif is_jeonse:
-        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 대출이자</span> <span>{abs(int(expense_loan)):,} 만원</span></div>"
-        details_html += "<div style='display:flex; justify-content:space-between; color:gray; opacity:0.5;'><span>- 월세지출</span> <span>0 만원</span></div>"
-        details_html += "<div style='visibility:hidden;'>.</div>" 
+        details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출이자</span> <span style='font-weight:500;'>{abs(int(expense_loan)):,} 만원</span></div>"
+        details_html += "<div style='display:flex; justify-content:space-between; color:#cbd5e0; margin-bottom:6px; font-size:0.9em;'><span>- 월세지출</span> <span>0 만원</span></div>"
+        details_html += "<div style='visibility:hidden; height:21px;'>.</div>" 
     else: 
-        # 매매는 '대출 원리금'으로 표기 변경
-        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:blue'>+ 집값상승</span> <span>{int(income_capital):,} 만원</span></div>"
-        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 대출원리금</span> <span>{abs(int(expense_loan)):,} 만원</span></div>"
-        details_html += "<div style='visibility:hidden;'>.</div>" 
+        details_html += f"<div style='{row_style}'><span style='color:#4299e1;'>+ 집값상승</span> <span style='font-weight:500;'>{int(income_capital):,} 만원</span></div>"
+        details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출원리금</span> <span style='font-weight:500;'>{abs(int(expense_loan)):,} 만원</span></div>"
+        details_html += "<div style='visibility:hidden; height:21px;'>.</div>" 
 
     # 최종 HTML 조립
     html = f"""
-<div style='border:1px solid #ddd; border-radius:10px; padding:15px; height:100%; display:flex; flex-direction:column;'>
-    <h3 style='margin-top:0; text-align:center; font-size:1.2em; margin-bottom:5px;'>{title}</h3>
+<div style='position:relative; background-color:{bg_color}; border:{border_style}; border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; box-shadow:{shadow}; transition: transform 0.2s;'>
+    {badge_html}
+    <h3 style='margin-top:5px; text-align:center; font-size:1.1em; color:#4a5568; font-weight:600;'>{title}</h3>
     <div style='text-align:center; margin-bottom:5px;'>
-        <span style='font-size:1.6em; font-weight:bold; color:{color_flow};'>{int(total_flow):,} 만원</span>
+        <span style='font-size:1.8em; font-weight:800; color:{color_flow}; letter-spacing:-0.5px;'>{int(total_flow):,}</span>
+        <span style='font-size:1.0em; color:{color_flow};'>만원</span>
     </div>
-    <div style='text-align:center; margin-bottom:15px; height:20px;'>
+    <div style='text-align:center; margin-bottom:20px; height:20px;'>
         {diff_html}
     </div>
     {formula_html}
-    <div style='font-size:0.95em; line-height:1.8; border-top:1px solid #eee; padding-top:10px; flex-grow:1;'>
+    <div style='border-top:1px solid #edf2f7; padding-top:15px; flex-grow:1;'>
         {details_html}
     </div>
 </div>
@@ -95,12 +108,12 @@ def create_card_html(title, total_flow, diff_val,
     return html
 
 
-st.title("🏠 전세 vs 월세 vs 매매: 주거비용 판단")
-st.markdown("감정을 배제하고 **현금흐름(수익-지출)**을 비교합니다.")
+st.title("🏠 이성적 주거 판단기")
+st.markdown("##### **투자 수익**과 **주거 비용**을 합산하여 연간 **순현금흐름**을 시뮬레이션합니다.")
 
 
 # --- 1. 입력 섹션 ---
-with st.expander("📝 자산 및 매물 정보 입력 (여기를 클릭하세요!)", expanded=True):
+with st.expander("📝 자산 및 매물 정보 입력 (클릭해서 펼치기)", expanded=True):
     
     st.markdown("#### 1. 내 자산 및 금리")
     col_asset1, col_asset2 = st.columns(2)
@@ -108,13 +121,11 @@ with st.expander("📝 자산 및 매물 정보 입력 (여기를 클릭하세�
         my_money = st.number_input("내 가용 현금 (만원)", value=10000, step=1000, format="%d")
         st.caption(f"💰 {format_currency(my_money)}")
     with col_asset2:
-        # [변경] 기본값 4.0%
         house_growth_pct = st.number_input("기대 집값 상승률 (%)", value=4.0, step=0.1, format="%.1f")
         house_growth = house_growth_pct / 100
 
     col_rate1, col_rate2 = st.columns(2)
     with col_rate1:
-        # [변경] 기본값 4.0%
         stock_return_pct = st.number_input("투자 기대 수익률 (%)", value=4.0, step=0.1, format="%.1f")
         stock_return = stock_return_pct / 100
     with col_rate2:
@@ -125,7 +136,7 @@ with st.expander("📝 자산 및 매물 정보 입력 (여기를 클릭하세�
     
     st.markdown("#### 2. 매물 정보")
     
-    tab_m, tab_j, tab_b = st.tabs(["월세 입력", "전세 입력", "매매 입력"])
+    tab_m, tab_j, tab_b = st.tabs(["월세", "전세", "매매"])
     
     with tab_m:
         col_m1, col_m2 = st.columns(2)
@@ -147,13 +158,12 @@ with st.expander("📝 자산 및 매물 정보 입력 (여기를 클릭하세�
         with col_b1:
             buying_price = st.number_input("매매 가격 (만원)", value=50000, step=1000, format="%d")
         with col_b2:
-            # [변경] 기본값 40000 (4억원)
             buying_loan = st.number_input("매매 담보 대출 (만원)", value=40000, step=1000, format="%d")
 
 
 # --- 2. 계산 로직 ---
 
-# A. [월세 계산] - 만기일시상환 (이자만)
+# A. [월세 계산]
 real_my_money_monthly = monthly_deposit - monthly_loan
 surplus_cash_monthly = my_money - real_my_money_monthly
 
@@ -164,7 +174,7 @@ expense_loan_monthly = -(monthly_loan * loan_rate)
 total_flow_monthly = income_invest_monthly + expense_rent_yearly + expense_loan_monthly
 
 
-# B. [전세 계산] - 만기일시상환 (이자만)
+# B. [전세 계산]
 real_my_money_jeonse = jeonse_deposit - jeonse_loan
 surplus_cash_jeonse = my_money - real_my_money_jeonse
 
@@ -174,15 +184,14 @@ expense_loan_jeonse = -(jeonse_loan * loan_rate)
 total_flow_jeonse = income_invest_jeonse + expense_loan_jeonse
 
 
-# C. [매매 계산] - 30년 원리금 균등 상환
+# C. [매매 계산]
 real_my_money_buying = buying_price - buying_loan
 surplus_cash_buying = my_money - real_my_money_buying
 
 income_invest_buying = surplus_cash_buying * stock_return   
 income_capital_gain = buying_price * house_growth           
 
-# [변경] 원리금 균등 상환 계산 (30년)
-# PMT = P * r(1+r)^n / ((1+r)^n - 1)
+# 원리금 균등 상환 계산 (30년)
 if buying_loan > 0 and loan_rate > 0:
     rate_monthly = loan_rate / 12
     n_months = 30 * 12
@@ -193,30 +202,39 @@ elif buying_loan > 0 and loan_rate == 0:
 else:
     yearly_payment = 0
 
-expense_loan_buying = -(yearly_payment) # 원금+이자 모두 지출로 처리
+expense_loan_buying = -(yearly_payment) 
 
 total_flow_buying = income_invest_buying + expense_loan_buying + income_capital_gain
 
 
-# --- 3. 결과 출력 ---
+# --- 3. 승자 결정 (UI 그리기 전에 먼저 계산) ---
+# 자금 부족 여부 체크
+valid_options = {}
+if surplus_cash_monthly >= 0: valid_options["monthly"] = total_flow_monthly
+if surplus_cash_jeonse >= 0: valid_options["jeonse"] = total_flow_jeonse
+if surplus_cash_buying >= 0: valid_options["buying"] = total_flow_buying
+
+best_option_key = None
+if valid_options:
+    best_option_key = max(valid_options, key=valid_options.get)
+
+
+# --- 4. 결과 출력 ---
 st.divider()
 
-st.subheader("📊 연간 토탈 현금흐름 비교")
-st.caption("※ 토탈 현금흐름 = 투자수익 + 집값변동 - (대출이자/원리금) - 월세지출")
+st.subheader("📊 연간 현금흐름 비교")
+st.caption("※ 순현금흐름(Net Cash Flow)이 높을수록 자산 증식에 유리합니다.")
 
-# 비교 기준값 설정
-if surplus_cash_monthly < 0:
-    base_flow = 0 
-else:
-    base_flow = total_flow_monthly
+# 비교 기준값 (월세 기준)
+base_flow = total_flow_monthly if surplus_cash_monthly >= 0 else 0
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
     html = create_card_html(
-        title="월세 선택 시",
+        title="월세",
         total_flow=total_flow_monthly,
-        diff_val=0, # 기준
+        diff_val=0, 
         my_money=my_money,
         deposit=monthly_deposit,
         loan=monthly_loan,
@@ -224,14 +242,15 @@ with col1:
         income_invest=income_invest_monthly,
         expense_main=expense_rent_yearly,
         expense_loan=expense_loan_monthly,
-        is_monthly=True
+        is_monthly=True,
+        is_best=(best_option_key == "monthly")
     )
     st.markdown(html, unsafe_allow_html=True)
 
 with col2:
     diff = int(total_flow_jeonse - base_flow) if surplus_cash_jeonse >= 0 else 0
     html = create_card_html(
-        title="전세 선택 시",
+        title="전세",
         total_flow=total_flow_jeonse,
         diff_val=diff,
         my_money=my_money,
@@ -241,14 +260,15 @@ with col2:
         income_invest=income_invest_jeonse,
         expense_main=0,
         expense_loan=expense_loan_jeonse,
-        is_jeonse=True
+        is_jeonse=True,
+        is_best=(best_option_key == "jeonse")
     )
     st.markdown(html, unsafe_allow_html=True)
 
 with col3:
     diff = int(total_flow_buying - base_flow) if surplus_cash_buying >= 0 else 0
     html = create_card_html(
-        title="매매 선택 시",
+        title="매매",
         total_flow=total_flow_buying,
         diff_val=diff,
         my_money=my_money,
@@ -258,28 +278,7 @@ with col3:
         income_invest=income_invest_buying,
         expense_main=0,
         expense_loan=expense_loan_buying,
-        income_capital=income_capital_gain
+        income_capital=income_capital_gain,
+        is_best=(best_option_key == "buying")
     )
     st.markdown(html, unsafe_allow_html=True)
-
-
-# --- 4. 최종 판단 ---
-st.divider()
-
-options = {}
-if surplus_cash_monthly >= 0: options["월세"] = total_flow_monthly
-if surplus_cash_jeonse >= 0: options["전세"] = total_flow_jeonse
-if surplus_cash_buying >= 0: options["매매"] = total_flow_buying
-
-if not options:
-    st.error("❌ 모든 옵션에서 자금이 부족합니다. 대출을 늘리거나 눈높이를 낮춰주세요.")
-else:
-    best_option = max(options, key=options.get)
-    best_val = options[best_option]
-    
-    if best_option == "매매":
-        st.success(f"🏆 결론: **매매**가 가장 이득입니다! (연간 {int(best_val):,}만원 확보)")
-    elif best_option == "전세":
-        st.warning(f"🏆 결론: **전세**가 가장 이득입니다! (연간 {int(best_val):,}만원 확보)")
-    else:
-        st.info(f"🏆 결론: **월세**가 가장 이득입니다! (연간 {int(best_val):,}만원 확보)")

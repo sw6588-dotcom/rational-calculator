@@ -97,7 +97,7 @@ stock_return = stock_return_pct / 100
 loan_rate_pct = st.sidebar.number_input("대출 금리 (%)", value=4.0, step=0.1, format="%.1f")
 loan_rate = loan_rate_pct / 100
 
-# 기대 집값 상승률
+# 집값 기대 상승률
 house_growth_pct = st.sidebar.number_input("기대 집값 상승률 (%)", value=2.0, step=0.1, format="%.1f")
 house_growth = house_growth_pct / 100
 

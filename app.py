@@ -3,13 +3,14 @@ import streamlit as st
 # --- 0. 설정 및 함수 ---
 st.set_page_config(page_title="이성적 주거 판단기", layout="centered")
 
-# CSS로 스타일 조정 (폰트, 여백 등)
+# CSS로 스타일 조정
 st.markdown("""
 <style>
     .stExpander { border: none !important; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 10px; }
     div[data-testid="stMetricValue"] { font-size: 1.5rem; }
     .metric-label { font-size: 0.9em; color: #718096; margin-bottom: 2px; }
     .metric-value { font-size: 1.4em; font-weight: 800; }
+    .detail-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9em; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -24,11 +25,12 @@ def format_currency(value):
         return f"{uk}억원"
     return f"{val:,}만원"
 
-# 카드 HTML 생성 함수 (현금흐름 & 자산변동 분리 표시)
+# 카드 HTML 생성 함수
 def create_card_html(title, net_cash_flow, net_asset_change, 
                      my_money, deposit, loan, investable, 
-                     income_invest, expense_cash, expense_interest_only, 
-                     income_capital=0, is_monthly=False, is_jeonse=False, is_best_asset=False):
+                     income_invest, income_capital, 
+                     expense_rent, expense_loan_cash, expense_loan_cost,
+                     is_best_asset=False):
     
     # 1. 자금 부족 체크
     if investable < 0:
@@ -42,13 +44,12 @@ def create_card_html(title, net_cash_flow, net_asset_change,
 </p>
 </div>"""
 
-    # 2. 디자인 스타일 설정
+    # 2. 디자인 설정
     border_style = "2px solid #ffd700" if is_best_asset else "1px solid #e2e8f0"
-    bg_color = "#ffffff"
     shadow = "0 8px 16px rgba(0,0,0,0.1)" if is_best_asset else "0 4px 6px rgba(0,0,0,0.05)"
     badge_html = "<div style='position:absolute; top:-12px; right:15px; background-color:#ffd700; color:#fff; padding:4px 10px; border-radius:12px; font-size:0.8em; font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.2);'>🏆 자산 1위</div>" if is_best_asset else ""
     
-    # 색상 설정 (자산 변동 기준)
+    # 색상 설정
     color_asset = "#2b6cb0" if net_asset_change > 0 else "#c53030"
     color_cash = "#2b6cb0" if net_cash_flow > 0 else "#c53030"
 
@@ -59,28 +60,33 @@ def create_card_html(title, net_cash_flow, net_asset_change,
 = <b style='color:#2d3748;'>{int(investable):,} 만원</b>
 </div>"""
 
-    # 상세 내역 (HTML 정렬 문제 해결됨)
-    row_style = "display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.9em;"
-    
+    # 상세 내역 HTML 작성
     details_html = ""
-    # 투자수익 (공통)
-    details_html += f"<div style='{row_style}'><span style='color:#4299e1;'>+ 투자수익</span> <span style='font-weight:500;'>{int(income_invest):,} 만원</span></div>"
     
-    if is_monthly:
-        details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 월세지출</span> <span style='font-weight:500;'>{abs(int(expense_cash)):,} 만원</span></div>"
-        details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출이자</span> <span style='font-weight:500;'>{abs(int(expense_cash)):,} 만원</span></div>" # 월세는 이자=현금유출
-    elif is_jeonse:
-        details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출이자</span> <span style='font-weight:500;'>{abs(int(expense_cash)):,} 만원</span></div>"
-    else: 
-        # 매매
-        details_html += f"<div style='{row_style}'><span style='color:#4299e1;'>+ 집값상승</span> <span style='font-weight:500;'>{int(income_capital):,} 만원</span></div>"
-        # 매매는 현금유출(원리금)과 비용(이자)가 다름. 여기선 '비용(이자)'만 표기하거나 둘다 표기해야 함.
-        # 깔끔함을 위해 주요 비용인 '대출이자'만 표기 (자산변동 기준)
-        details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출이자</span> <span style='font-weight:500;'>{abs(int(expense_interest_only)):,} 만원</span></div>"
-        # 현금흐름용 원리금 표기는 생략하거나 툴팁으로? 공간 부족하니 생략.
+    # (1) 자산 증가 요인 (파란색)
+    if income_invest > 0:
+        details_html += f"<div class='detail-row'><span style='color:#4299e1;'>+ 투자수익</span> <span style='font-weight:500;'>{int(income_invest):,} 만원</span></div>"
+    if income_capital > 0:
+        details_html += f"<div class='detail-row'><span style='color:#4299e1;'>+ 집값상승</span> <span style='font-weight:500;'>{int(income_capital):,} 만원</span></div>"
+    
+    # (2) 현금 유출/비용 요인 (빨간색)
+    if expense_rent > 0:
+        details_html += f"<div class='detail-row'><span style='color:#f56565;'>- 월세지출</span> <span style='font-weight:500;'>{int(expense_rent):,} 만원</span></div>"
+    
+    # 대출 관련 표시
+    # 매매의 경우: 현금유출(원리금)과 비용(이자)가 다름
+    # 여기서는 '현금흐름' 위주로 보여줄지, '비용' 위주로 보여줄지 결정해야 함
+    # 헷갈리지 않게 '대출지출'로 통일하되, 매매는 (원리금)이라고 명시
+    if expense_loan_cash > 0:
+        label = "대출원리금" if (expense_loan_cash != expense_loan_cost) else "대출이자"
+        details_html += f"<div class='detail-row'><span style='color:#f56565;'>- {label}</span> <span style='font-weight:500;'>{int(expense_loan_cash):,} 만원</span></div>"
+
+    # 줄 맞춤용 빈 div (내용이 너무 적을 때 높이 확보)
+    if (income_invest == 0 and income_capital == 0 and expense_rent == 0 and expense_loan_cash == 0):
+        details_html += "<div style='height:20px;'></div>"
 
     # 최종 HTML 조립
-    html = f"""<div style='position:relative; background-color:{bg_color}; border:{border_style}; border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; box-shadow:{shadow}; transition: transform 0.2s;'>
+    html = f"""<div style='position:relative; background-color:#fff; border:{border_style}; border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; box-shadow:{shadow}; transition: transform 0.2s;'>
 {badge_html}
 <h3 style='margin-top:5px; text-align:center; font-size:1.1em; color:#4a5568; font-weight:600;'>{title}</h3>
 
@@ -92,6 +98,7 @@ def create_card_html(title, net_cash_flow, net_asset_change,
 <div style='text-align:center; margin-bottom:15px;'>
     <div class='metric-label'>💸 연간 순현금흐름</div>
     <div class='metric-value' style='color:{color_cash}; font-size:1.2em;'>{int(net_cash_flow):,} 만원</div>
+    <div style='font-size:0.75em; color:#a0aec0;'>(투자수익 제외)</div>
 </div>
 
 {formula_html}
@@ -104,7 +111,7 @@ def create_card_html(title, net_cash_flow, net_asset_change,
 
 
 st.title("🏠 이성적 주거 판단기")
-st.markdown("##### **순현금흐름(지갑 사정)**과 **총 자산 변동(재산 증식)**을 동시에 비교합니다.")
+st.markdown("##### **순현금흐름(생활비)**과 **총 자산 변동(재산)**을 동시에 비교합니다.")
 
 
 # --- 1. 입력 섹션 ---
@@ -163,12 +170,14 @@ real_my_money_monthly = monthly_deposit - monthly_loan
 surplus_cash_monthly = my_money - real_my_money_monthly
 
 income_invest_monthly = surplus_cash_monthly * stock_return 
-expense_rent_yearly = -(monthly_rent * 12)                  
-expense_loan_monthly = -(monthly_loan * loan_rate)          
+expense_rent_yearly = monthly_rent * 12
+expense_loan_monthly_cash = monthly_loan * loan_rate # 이자만 납부 가정
 
-# 월세는 현금흐름 = 자산변동 (집값 변동 없음)
-net_cash_flow_monthly = income_invest_monthly + expense_rent_yearly + expense_loan_monthly
-net_asset_change_monthly = net_cash_flow_monthly
+# 순현금흐름 (지출만)
+net_cash_flow_monthly = -(expense_rent_yearly + expense_loan_monthly_cash)
+
+# 총 자산 변동 (투자수익 포함, 비용 차감)
+net_asset_change_monthly = income_invest_monthly - expense_rent_yearly - expense_loan_monthly_cash
 
 
 # B. [전세 계산]
@@ -176,14 +185,16 @@ real_my_money_jeonse = jeonse_deposit - jeonse_loan
 surplus_cash_jeonse = my_money - real_my_money_jeonse
 
 income_invest_jeonse = surplus_cash_jeonse * stock_return   
-expense_loan_jeonse = -(jeonse_loan * loan_rate)            
+expense_loan_jeonse_cash = jeonse_loan * loan_rate # 이자만 납부
 
-# 전세도 현금흐름 = 자산변동 (이자만 냄)
-net_cash_flow_jeonse = income_invest_jeonse + expense_loan_jeonse
-net_asset_change_jeonse = net_cash_flow_jeonse
+# 순현금흐름
+net_cash_flow_jeonse = -(expense_loan_jeonse_cash)
+
+# 총 자산 변동
+net_asset_change_jeonse = income_invest_jeonse - expense_loan_jeonse_cash
 
 
-# C. [매매 계산] - 핵심!
+# C. [매매 계산]
 real_my_money_buying = buying_price - buying_loan
 surplus_cash_buying = my_money - real_my_money_buying
 
@@ -201,14 +212,14 @@ elif buying_loan > 0 and loan_rate == 0:
 else:
     yearly_payment_total = 0
 
-# 2. 대출 이자만 (비용) - 첫해 기준 근사치
+# 2. 대출 이자비용 (자산 차감용)
 yearly_interest_only = buying_loan * loan_rate
 
-# [매매 지표 분리]
-# 1) 순현금흐름 = 투자수익 - (원금+이자)
-net_cash_flow_buying = income_invest_buying - yearly_payment_total
+# 순현금흐름 (투자수익 제외, 원리금 전액 차감)
+net_cash_flow_buying = -(yearly_payment_total)
 
-# 2) 총 자산 변동 = 투자수익 + 집값상승 - 이자비용 (원금 상환은 내 자산 이동이므로 비용 아님)
+# 총 자산 변동 (투자수익 포함, 집값상승 포함, 이자만 비용으로 차감)
+# 원금 상환분은 내 자산(대출 감소=순자산 증가)이므로 비용 아님
 net_asset_change_buying = income_invest_buying + income_capital_gain - yearly_interest_only
 
 
@@ -227,8 +238,8 @@ if valid_options:
 st.divider()
 
 st.subheader("📊 비교 분석 결과")
-st.caption("※ **순현금흐름**: 실제 통장 잔고 변화 (마이너스면 생활비에서 까먹음)")
-st.caption("※ **총 자산 변동**: 부동산 가치 상승을 포함한 내 재산의 변화")
+st.caption("※ **순현금흐름**: 실제 통장 잔고 변화 (마이너스면 생활비에서 지출)")
+st.caption("※ **총 자산 변동**: 부동산/주식 가치 상승을 포함한 내 재산의 변화")
 
 col1, col2, col3 = st.columns(3)
 
@@ -242,9 +253,10 @@ with col1:
         loan=monthly_loan,
         investable=surplus_cash_monthly,
         income_invest=income_invest_monthly,
-        expense_cash=expense_rent_yearly + expense_loan_monthly, # 현금유출
-        expense_interest_only=0, # 해당없음
-        is_monthly=True,
+        income_capital=0,
+        expense_rent=expense_rent_yearly,
+        expense_loan_cash=expense_loan_monthly_cash,
+        expense_loan_cost=expense_loan_monthly_cash,
         is_best_asset=(best_asset_key == "monthly")
     )
     st.markdown(html, unsafe_allow_html=True)
@@ -259,9 +271,10 @@ with col2:
         loan=jeonse_loan,
         investable=surplus_cash_jeonse,
         income_invest=income_invest_jeonse,
-        expense_cash=expense_loan_jeonse, # 현금유출
-        expense_interest_only=0,
-        is_jeonse=True,
+        income_capital=0,
+        expense_rent=0,
+        expense_loan_cash=expense_loan_jeonse_cash,
+        expense_loan_cost=expense_loan_jeonse_cash,
         is_best_asset=(best_asset_key == "jeonse")
     )
     st.markdown(html, unsafe_allow_html=True)
@@ -276,9 +289,10 @@ with col3:
         loan=buying_loan,
         investable=surplus_cash_buying,
         income_invest=income_invest_buying,
-        expense_cash=yearly_payment_total,        # 현금유출 (원리금)
-        expense_interest_only=yearly_interest_only, # 비용 (이자)
         income_capital=income_capital_gain,
+        expense_rent=0,
+        expense_loan_cash=yearly_payment_total,        # 현금유출 (원리금)
+        expense_loan_cost=yearly_interest_only,        # 자산비용 (이자)
         is_best_asset=(best_asset_key == "buying")
     )
     st.markdown(html, unsafe_allow_html=True)

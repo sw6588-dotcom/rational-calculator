@@ -21,7 +21,6 @@ def create_card_html(title, total_flow, diff_val,
                      income_capital=0, is_monthly=False, is_jeonse=False):
     
     # 1. 자금 부족 체크 (Impossible 상태)
-    # 굴리는 돈(investable)이 마이너스면, 현금+대출보다 집값이 비싸다는 뜻
     if investable < 0:
         shortfall = abs(investable)
         return f"""
@@ -72,8 +71,9 @@ def create_card_html(title, total_flow, diff_val,
         details_html += "<div style='display:flex; justify-content:space-between; color:gray; opacity:0.5;'><span>- 월세지출</span> <span>0 만원</span></div>"
         details_html += "<div style='visibility:hidden;'>.</div>" 
     else: 
+        # 매매는 '대출 원리금'으로 표기 변경
         details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:blue'>+ 집값상승</span> <span>{int(income_capital):,} 만원</span></div>"
-        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 대출이자</span> <span>{abs(int(expense_loan)):,} 만원</span></div>"
+        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 대출원리금</span> <span>{abs(int(expense_loan)):,} 만원</span></div>"
         details_html += "<div style='visibility:hidden;'>.</div>" 
 
     # 최종 HTML 조립
@@ -99,7 +99,7 @@ st.title("🏠 전세 vs 월세 vs 매매: 이성적 판단기")
 st.markdown("감정을 배제하고 **현금흐름(수익-지출)**을 비교합니다.")
 
 
-# --- 1. 입력 섹션 (Expander로 변경하여 모바일 가독성 확보) ---
+# --- 1. 입력 섹션 ---
 with st.expander("📝 자산 및 매물 정보 입력 (여기를 클릭하세요!)", expanded=True):
     
     st.markdown("#### 1. 내 자산 및 금리")
@@ -108,12 +108,14 @@ with st.expander("📝 자산 및 매물 정보 입력 (여기를 클릭하세�
         my_money = st.number_input("내 가용 현금 (만원)", value=10000, step=1000, format="%d")
         st.caption(f"💰 {format_currency(my_money)}")
     with col_asset2:
-        house_growth_pct = st.number_input("기대 집값 상승률 (%)", value=2.0, step=0.1, format="%.1f")
+        # [변경] 기본값 4.0%
+        house_growth_pct = st.number_input("기대 집값 상승률 (%)", value=4.0, step=0.1, format="%.1f")
         house_growth = house_growth_pct / 100
 
     col_rate1, col_rate2 = st.columns(2)
     with col_rate1:
-        stock_return_pct = st.number_input("투자 기대 수익률 (%)", value=8.0, step=0.1, format="%.1f")
+        # [변경] 기본값 4.0%
+        stock_return_pct = st.number_input("투자 기대 수익률 (%)", value=4.0, step=0.1, format="%.1f")
         stock_return = stock_return_pct / 100
     with col_rate2:
         loan_rate_pct = st.number_input("대출 금리 (%)", value=4.0, step=0.1, format="%.1f")
@@ -123,7 +125,6 @@ with st.expander("📝 자산 및 매물 정보 입력 (여기를 클릭하세�
     
     st.markdown("#### 2. 매물 정보")
     
-    # 탭으로 구분하여 입력 공간 절약
     tab_m, tab_j, tab_b = st.tabs(["월세 입력", "전세 입력", "매매 입력"])
     
     with tab_m:
@@ -146,39 +147,53 @@ with st.expander("📝 자산 및 매물 정보 입력 (여기를 클릭하세�
         with col_b1:
             buying_price = st.number_input("매매 가격 (만원)", value=50000, step=1000, format="%d")
         with col_b2:
-            buying_loan = st.number_input("매매 담보 대출 (만원)", value=20000, step=1000, format="%d")
+            # [변경] 기본값 40000 (4억원)
+            buying_loan = st.number_input("매매 담보 대출 (만원)", value=40000, step=1000, format="%d")
 
 
 # --- 2. 계산 로직 ---
 
-# A. [월세 계산]
+# A. [월세 계산] - 만기일시상환 (이자만)
 real_my_money_monthly = monthly_deposit - monthly_loan
-surplus_cash_monthly = my_money - real_my_money_monthly # 굴릴 수 있는 돈
+surplus_cash_monthly = my_money - real_my_money_monthly
 
-income_invest_monthly = surplus_cash_monthly * stock_return # (+) 투자수익
-expense_rent_yearly = -(monthly_rent * 12)                  # (-) 월세지출
-expense_loan_monthly = -(monthly_loan * loan_rate)          # (-) 대출이자
+income_invest_monthly = surplus_cash_monthly * stock_return 
+expense_rent_yearly = -(monthly_rent * 12)                  
+expense_loan_monthly = -(monthly_loan * loan_rate)          
 
 total_flow_monthly = income_invest_monthly + expense_rent_yearly + expense_loan_monthly
 
 
-# B. [전세 계산]
+# B. [전세 계산] - 만기일시상환 (이자만)
 real_my_money_jeonse = jeonse_deposit - jeonse_loan
 surplus_cash_jeonse = my_money - real_my_money_jeonse
 
-income_invest_jeonse = surplus_cash_jeonse * stock_return   # (+) 투자수익
-expense_loan_jeonse = -(jeonse_loan * loan_rate)            # (-) 대출이자
+income_invest_jeonse = surplus_cash_jeonse * stock_return   
+expense_loan_jeonse = -(jeonse_loan * loan_rate)            
 
 total_flow_jeonse = income_invest_jeonse + expense_loan_jeonse
 
 
-# C. [매매 계산]
+# C. [매매 계산] - 30년 원리금 균등 상환
 real_my_money_buying = buying_price - buying_loan
 surplus_cash_buying = my_money - real_my_money_buying
 
-income_invest_buying = surplus_cash_buying * stock_return   # (+) 투자수익
-expense_loan_buying = -(buying_loan * loan_rate)            # (-) 대출이자
-income_capital_gain = buying_price * house_growth           # (+) 집값상승
+income_invest_buying = surplus_cash_buying * stock_return   
+income_capital_gain = buying_price * house_growth           
+
+# [변경] 원리금 균등 상환 계산 (30년)
+# PMT = P * r(1+r)^n / ((1+r)^n - 1)
+if buying_loan > 0 and loan_rate > 0:
+    rate_monthly = loan_rate / 12
+    n_months = 30 * 12
+    monthly_payment = buying_loan * (rate_monthly * (1 + rate_monthly)**n_months) / ((1 + rate_monthly)**n_months - 1)
+    yearly_payment = monthly_payment * 12
+elif buying_loan > 0 and loan_rate == 0:
+    yearly_payment = buying_loan / 30
+else:
+    yearly_payment = 0
+
+expense_loan_buying = -(yearly_payment) # 원금+이자 모두 지출로 처리
 
 total_flow_buying = income_invest_buying + expense_loan_buying + income_capital_gain
 
@@ -187,10 +202,9 @@ total_flow_buying = income_invest_buying + expense_loan_buying + income_capital_
 st.divider()
 
 st.subheader("📊 연간 토탈 현금흐름 비교")
-st.caption("※ 토탈 현금흐름 = 투자수익 + 집값변동 - 대출이자 - 월세지출")
+st.caption("※ 토탈 현금흐름 = 투자수익 + 집값변동 - (대출이자/원리금) - 월세지출")
 
-# 비교 기준값 (월세 기준)
-# 만약 월세도 불가능한 상태라면 기준을 0으로 잡거나 에러 처리
+# 비교 기준값 설정
 if surplus_cash_monthly < 0:
     base_flow = 0 
 else:
@@ -215,9 +229,7 @@ with col1:
     st.markdown(html, unsafe_allow_html=True)
 
 with col2:
-    # 자금 부족 시 diff_val 계산 방지
     diff = int(total_flow_jeonse - base_flow) if surplus_cash_jeonse >= 0 else 0
-    
     html = create_card_html(
         title="전세 선택 시",
         total_flow=total_flow_jeonse,
@@ -234,9 +246,7 @@ with col2:
     st.markdown(html, unsafe_allow_html=True)
 
 with col3:
-    # 자금 부족 시 diff_val 계산 방지
     diff = int(total_flow_buying - base_flow) if surplus_cash_buying >= 0 else 0
-
     html = create_card_html(
         title="매매 선택 시",
         total_flow=total_flow_buying,
@@ -256,7 +266,6 @@ with col3:
 # --- 4. 최종 판단 ---
 st.divider()
 
-# 유효한(자금 부족이 아닌) 옵션 중에서만 비교
 options = {}
 if surplus_cash_monthly >= 0: options["월세"] = total_flow_monthly
 if surplus_cash_jeonse >= 0: options["전세"] = total_flow_jeonse

@@ -22,25 +22,24 @@ def format_currency(value):
         return f"{uk}억원"
     return f"{val:,}만원"
 
-# 카드 HTML 생성 함수 (공백 문제 해결: 문자열을 왼쪽 끝으로 붙임)
+# 카드 HTML 생성 함수 (공백 문제 완벽 해결 버전)
 def create_card_html(title, total_flow, diff_val, 
                      my_money, deposit, loan, investable, 
                      income_invest, expense_main, expense_loan, 
                      income_capital=0, is_monthly=False, is_jeonse=False, is_best=False):
     
-    # 1. 자금 부족 체크
+    # 1. 자금 부족 체크 (Impossible 상태)
     if investable < 0:
         shortfall = abs(investable)
-        return f"""
-<div style='background-color:#fff5f5; border:1px solid #ffcccc; border-radius:15px; padding:20px; height:100%; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
-    <h3 style='margin:0; font-size:1.1em; color:#555;'>{title}</h3>
-    <div style='font-size:2.5em; margin:15px 0;'>🚫</div>
-    <strong style='color:#e53e3e; font-size:1.0em;'>자금 부족</strong>
-    <p style='color:#718096; font-size:0.85em; margin-top:10px;'>
-        <b>{shortfall:,}만원</b> 부족
-    </p>
-</div>
-"""
+        # 중요: 아래 HTML 코드는 들여쓰기 없이 왼쪽 끝에 붙어있어야 함
+        return f"""<div style='background-color:#fff5f5; border:1px solid #ffcccc; border-radius:15px; padding:20px; height:100%; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+<h3 style='margin:0; font-size:1.1em; color:#555;'>{title}</h3>
+<div style='font-size:2.5em; margin:15px 0;'>🚫</div>
+<strong style='color:#e53e3e; font-size:1.0em;'>자금 부족</strong>
+<p style='color:#718096; font-size:0.85em; margin-top:10px;'>
+<b>{shortfall:,}만원</b> 부족
+</p>
+</div>"""
 
     # 2. 디자인 스타일 설정
     border_style = "2px solid #ffd700" if is_best else "1px solid #e2e8f0"
@@ -51,7 +50,7 @@ def create_card_html(title, total_flow, diff_val,
     # 색상 설정
     color_flow = "#2b6cb0" if total_flow > 0 else "#c53030" # 파랑 / 빨강
     
-    # 차이(Delta) 표시
+    # 차이(Delta) 표시 텍스트
     if diff_val == 0:
         diff_html = "<span style='color:#a0aec0; font-size:0.85em'>- (기준)</span>"
     elif diff_val > 0:
@@ -59,15 +58,14 @@ def create_card_html(title, total_flow, diff_val,
     else:
         diff_html = f"<span style='color:#c53030; font-size:0.85em; font-weight:bold;'>▼ {abs(diff_val):,} 더 손해</span>"
 
-    # 굴리는 돈 박스 디자인 (들여쓰기 제거)
-    formula_html = f"""
-<div style='background-color:#f7fafc; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85em; color:#4a5568; text-align:center; border:1px solid #edf2f7;'>
-    <div style='font-weight:600; margin-bottom:4px; color:#718096;'>💰 굴리는 돈</div>
-    {int(my_money):,} - ({int(deposit):,} - {int(loan):,})<br>
-    = <b style='color:#2d3748;'>{int(investable):,} 만원</b>
+    # 굴리는 돈 박스 (들여쓰기 제거됨)
+    formula_html = f"""<div style='background-color:#f7fafc; padding:10px; border-radius:8px; margin-bottom:15px; font-size:0.85em; color:#4a5568; text-align:center; border:1px solid #edf2f7;'>
+<div style='font-weight:600; margin-bottom:4px; color:#718096;'>💰 굴리는 돈</div>
+{int(my_money):,} - ({int(deposit):,} - {int(loan):,})<br>
+= <b style='color:#2d3748;'>{int(investable):,} 만원</b>
 </div>"""
 
-    # 상세 내역 디자인 (Flexbox 활용)
+    # 상세 내역 (Flexbox 활용) - 여기는 한 줄씩이라 괜찮지만 안전하게 작성
     row_style = "display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.9em;"
     
     details_html = ""
@@ -87,24 +85,22 @@ def create_card_html(title, total_flow, diff_val,
         details_html += f"<div style='{row_style}'><span style='color:#f56565;'>- 대출원리금</span> <span style='font-weight:500;'>{abs(int(expense_loan)):,} 만원</span></div>"
         details_html += "<div style='visibility:hidden; height:21px;'>.</div>" 
 
-    # 최종 HTML 조립 (들여쓰기 완전 제거)
-    html = f"""
-<div style='position:relative; background-color:{bg_color}; border:{border_style}; border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; box-shadow:{shadow}; transition: transform 0.2s;'>
-    {badge_html}
-    <h3 style='margin-top:5px; text-align:center; font-size:1.1em; color:#4a5568; font-weight:600;'>{title}</h3>
-    <div style='text-align:center; margin-bottom:5px;'>
-        <span style='font-size:1.8em; font-weight:800; color:{color_flow}; letter-spacing:-0.5px;'>{int(total_flow):,}</span>
-        <span style='font-size:1.0em; color:{color_flow};'>만원</span>
-    </div>
-    <div style='text-align:center; margin-bottom:20px; height:20px;'>
-        {diff_html}
-    </div>
-    {formula_html}
-    <div style='border-top:1px solid #edf2f7; padding-top:15px; flex-grow:1;'>
-        {details_html}
-    </div>
+    # 최종 HTML 조립 (중요: 여기도 들여쓰기 없이 왼쪽 벽에 붙임)
+    html = f"""<div style='position:relative; background-color:{bg_color}; border:{border_style}; border-radius:16px; padding:20px; height:100%; display:flex; flex-direction:column; box-shadow:{shadow}; transition: transform 0.2s;'>
+{badge_html}
+<h3 style='margin-top:5px; text-align:center; font-size:1.1em; color:#4a5568; font-weight:600;'>{title}</h3>
+<div style='text-align:center; margin-bottom:5px;'>
+<span style='font-size:1.8em; font-weight:800; color:{color_flow}; letter-spacing:-0.5px;'>{int(total_flow):,}</span>
+<span style='font-size:1.0em; color:{color_flow};'>만원</span>
 </div>
-"""
+<div style='text-align:center; margin-bottom:20px; height:20px;'>
+{diff_html}
+</div>
+{formula_html}
+<div style='border-top:1px solid #edf2f7; padding-top:15px; flex-grow:1;'>
+{details_html}
+</div>
+</div>"""
     return html
 
 
@@ -121,7 +117,7 @@ with st.expander("📝 자산 및 매물 정보 입력 (클릭해서 펼치기)"
         my_money = st.number_input("내 가용 현금 (만원)", value=10000, step=1000, format="%d")
         st.caption(f"💰 {format_currency(my_money)}")
     with col_asset2:
-        # [위치 변경] 대출 금리가 위로 올라옴
+        # [위치 변경] 대출 금리
         loan_rate_pct = st.number_input("대출 금리 (%)", value=4.0, step=0.1, format="%.1f")
         loan_rate = loan_rate_pct / 100
 
@@ -130,7 +126,7 @@ with st.expander("📝 자산 및 매물 정보 입력 (클릭해서 펼치기)"
         stock_return_pct = st.number_input("투자 기대 수익률 (%)", value=4.0, step=0.1, format="%.1f")
         stock_return = stock_return_pct / 100
     with col_rate2:
-        # [위치 변경 & 이름 변경] 집값 기대 상승률이 아래로 내려옴
+        # [위치 변경 & 이름 변경] 집값 기대 상승률
         house_growth_pct = st.number_input("집값 기대 상승률 (%)", value=4.0, step=0.1, format="%.1f")
         house_growth = house_growth_pct / 100
         

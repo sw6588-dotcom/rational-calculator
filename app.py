@@ -29,53 +29,53 @@ def create_card_html(title, total_flow, diff_val,
     if diff_val == 0:
         diff_html = "<span style='color:gray; font-size:0.9em'>- (기준)</span>"
     elif diff_val > 0:
-        diff_html = f"<span style='color:blue; font-size:0.9em'>▲ {diff_val:,} 더 이득</span>"
+        diff_html = f"<span style='color:blue; font-size:0.9em'>▲ {diff_val:,}만원 더 이득</span>"
     else:
-        diff_html = f"<span style='color:red; font-size:0.9em'>▼ {abs(diff_val):,} 더 손해</span>"
+        diff_html = f"<span style='color:red; font-size:0.9em'>▼ {abs(diff_val):,}만원 더 손해</span>"
 
-    # 1. 굴리는 돈 수식 (요청사항 1번)
-    # 수식: 보유현금 - (보증금 - 대출) = 굴리는 돈
-    real_deposit = deposit - loan
+    # 1. 굴리는 돈 수식
     formula_html = f"""
-    <div style='background-color:#f9f9f9; padding:8px; border-radius:5px; margin-bottom:10px; font-size:0.85em; color:#333;'>
+    <div style='background-color:#f9f9f9; padding:8px; border-radius:5px; margin-bottom:10px; font-size:0.85em; color:#333; text-align:center;'>
         <strong>💰 굴리는 돈 계산</strong><br>
         {int(my_money):,} - ({int(deposit):,} - {int(loan):,})<br>
         = <b>{int(investable):,} 만원</b>
     </div>
     """
 
-    # 2. 상세 내역 (높이 맞춤을 위해 빈 줄 처리 포함)
-    # 월세/전세/매매에 따라 항목이 다르므로 HTML을 구성
+    # 2. 상세 내역 (수정됨: 절대값 적용, 만원 단위 추가, 정렬 개선)
     details_html = ""
     
-    # 투자수익 (공통)
-    details_html += f"<div><span style='color:blue'>+ 투자수익: {int(income_invest):,}</span></div>"
+    # 투자수익 (공통) - 파란색
+    details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:blue'>+ 투자수익</span> <span>{int(income_invest):,} 만원</span></div>"
     
     if is_monthly:
-        details_html += f"<div><span style='color:red'>- 월세지출: {int(expense_main):,}</span></div>"
-        details_html += f"<div><span style='color:red'>- 대출이자: {int(expense_loan):,}</span></div>"
-        details_html += "<div><span style='color:transparent'>.</span></div>" # 줄맞춤용 공백
+        # 월세 (지출) - 빨간색, 절대값 사용
+        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 월세지출</span> <span>{abs(int(expense_main)):,} 만원</span></div>"
+        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 대출이자</span> <span>{abs(int(expense_loan)):,} 만원</span></div>"
+        details_html += "<div style='visibility:hidden;'>.</div>" # 줄맞춤용 (투명)
     elif is_jeonse:
-        details_html += f"<div><span style='color:red'>- 대출이자: {int(expense_loan):,}</span></div>"
-        details_html += "<div><span style='color:gray; opacity:0.5'>- 월세지출: 0</span></div>"
-        details_html += "<div><span style='color:transparent'>.</span></div>" # 줄맞춤용 공백
+        # 전세 (지출)
+        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 대출이자</span> <span>{abs(int(expense_loan)):,} 만원</span></div>"
+        details_html += "<div style='display:flex; justify-content:space-between; color:gray; opacity:0.5;'><span>- 월세지출</span> <span>0 만원</span></div>"
+        details_html += "<div style='visibility:hidden;'>.</div>" # 줄맞춤용
     else: # 매매
-        details_html += f"<div><span style='color:blue'>+ 집값상승: {int(income_capital):,}</span></div>"
-        details_html += f"<div><span style='color:red'>- 대출이자: {int(expense_loan):,}</span></div>"
-        details_html += "<div><span style='color:transparent'>.</span></div>" # 줄맞춤용 공백
+        # 매매 (수익/지출)
+        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:blue'>+ 집값상승</span> <span>{int(income_capital):,} 만원</span></div>"
+        details_html += f"<div style='display:flex; justify-content:space-between;'><span style='color:red'>- 대출이자</span> <span>{abs(int(expense_loan)):,} 만원</span></div>"
+        details_html += "<div style='visibility:hidden;'>.</div>" # 줄맞춤용
 
     # 최종 HTML 조립
     html = f"""
-    <div style='border:1px solid #ddd; border-radius:10px; padding:15px; height:100%;'>
-        <h3 style='margin-top:0; text-align:center; font-size:1.2em;'>{title}</h3>
+    <div style='border:1px solid #ddd; border-radius:10px; padding:15px; height:100%; display:flex; flex-direction:column;'>
+        <h3 style='margin-top:0; text-align:center; font-size:1.2em; margin-bottom:5px;'>{title}</h3>
         <div style='text-align:center; margin-bottom:5px;'>
-            <span style='font-size:1.8em; font-weight:bold; color:{color_flow};'>{int(total_flow):,} 만원</span>
+            <span style='font-size:1.6em; font-weight:bold; color:{color_flow};'>{int(total_flow):,} 만원</span>
         </div>
         <div style='text-align:center; margin-bottom:15px; height:20px;'>
             {diff_html}
         </div>
         {formula_html}
-        <div style='font-size:0.95em; line-height:1.6; border-top:1px solid #eee; padding-top:10px;'>
+        <div style='font-size:0.95em; line-height:1.8; border-top:1px solid #eee; padding-top:10px; flex-grow:1;'>
             {details_html}
         </div>
     </div>
@@ -93,15 +93,15 @@ st.sidebar.header("1. 자산 및 금리 설정")
 my_money = st.sidebar.number_input("내 가용 현금 (만원)", value=10000, step=1000, format="%d")
 st.sidebar.caption(f"💰 환산: **{format_currency(my_money)}**")
 
-# 투자 기대 수익률 (빠른 버튼 삭제, 소수점 첫째자리, 이름 변경)
+# 투자 기대 수익률
 stock_return_pct = st.sidebar.number_input("투자 기대 수익률 (%)", value=8.0, step=0.1, format="%.1f")
 stock_return = stock_return_pct / 100
 
-# 대출 금리 (빠른 버튼 삭제, 소수점 첫째자리)
+# 대출 금리
 loan_rate_pct = st.sidebar.number_input("대출 금리 (%)", value=4.0, step=0.1, format="%.1f")
 loan_rate = loan_rate_pct / 100
 
-# 기대 집값 상승률 (이름 변경, 소수점 첫째자리)
+# 기대 집값 상승률
 house_growth_pct = st.sidebar.number_input("기대 집값 상승률 (%)", value=2.0, step=0.1, format="%.1f")
 house_growth = house_growth_pct / 100
 
@@ -165,8 +165,7 @@ st.divider()
 st.subheader("📊 연간 토탈 현금흐름 비교")
 st.caption("※ 토탈 현금흐름 = 투자수익 + 집값변동 - 대출이자 - 월세지출")
 
-# 비교 기준값 (월세 기준 혹은 최대 이익 기준)
-# 여기서는 가장 많이 쓰이는 '월세'를 기준으로 차이를 보여줍니다.
+# 비교 기준값 (월세 기준)
 base_flow = total_flow_monthly
 
 col1, col2, col3 = st.columns(3)
@@ -175,7 +174,7 @@ with col1:
     html = create_card_html(
         title="월세 선택 시",
         total_flow=total_flow_monthly,
-        diff_val=0, # 기준이므로 0
+        diff_val=0, # 기준
         my_money=my_money,
         deposit=monthly_deposit,
         loan=monthly_loan,

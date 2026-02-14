@@ -95,7 +95,7 @@ def create_card_html(title, total_flow, diff_val,
     return html
 
 
-st.title("🏠 전세 vs 월세 vs 매매: 이성적 판단기")
+st.title("🏠 전세 vs 월세 vs 매매: 주거비용 판단")
 st.markdown("감정을 배제하고 **현금흐름(수익-지출)**을 비교합니다.")
 
 

@@ -87,4 +87,101 @@ buying_loan = st.sidebar.number_input("매매 담보 대출 (만원)", value=200
 
 # A. [월세 계산]
 real_my_money_monthly = monthly_deposit - monthly_loan
-surplus_cash_monthly = my_money - real_my_money
+surplus_cash_monthly = my_money - real_my_money_monthly # 굴릴 수 있는 돈
+
+# 현금흐름 요소
+income_invest_monthly = surplus_cash_monthly * stock_return # (+) 투자수익
+expense_rent_yearly = -(monthly_rent * 12)                  # (-) 월세지출
+expense_loan_monthly = -(monthly_loan * loan_rate)          # (-) 대출이자
+
+# 토탈 현금흐름
+total_flow_monthly = income_invest_monthly + expense_rent_yearly + expense_loan_monthly
+
+
+# B. [전세 계산]
+real_my_money_jeonse = jeonse_deposit - jeonse_loan
+surplus_cash_jeonse = my_money - real_my_money_jeonse
+
+# 현금흐름 요소
+income_invest_jeonse = surplus_cash_jeonse * stock_return   # (+) 투자수익
+expense_loan_jeonse = -(jeonse_loan * loan_rate)            # (-) 대출이자
+
+# 토탈 현금흐름
+total_flow_jeonse = income_invest_jeonse + expense_loan_jeonse
+
+
+# C. [매매 계산]
+# 세금/유지 삭제 요청 반영하여 제외함
+real_my_money_buying = buying_price - buying_loan
+surplus_cash_buying = my_money - real_my_money_buying
+
+# 현금흐름 요소
+income_invest_buying = surplus_cash_buying * stock_return   # (+) 투자수익
+expense_loan_buying = -(buying_loan * loan_rate)            # (-) 대출이자
+income_capital_gain = buying_price * house_growth           # (+) 집값상승
+
+# 토탈 현금흐름
+total_flow_buying = income_invest_buying + expense_loan_buying + income_capital_gain
+
+
+# --- 3. 결과 출력 ---
+st.divider()
+
+st.subheader("📊 연간 토탈 현금흐름 (높을수록 좋음)")
+st.caption("※ 토탈 현금흐름 = 투자수익(내 돈 굴린 것) + 집값변동 - 대출이자 - 월세지출")
+
+col1, col2, col3 = st.columns(3)
+
+# 1. 월세 결과
+with col1:
+    st.metric(label="월세 선택 시", value=f"{int(total_flow_monthly):,} 만원")
+    st.markdown(f"""
+    <div style='font-size:14px; line-height:1.5'>
+    <span style='color:blue'>+ 투자수익: {int(income_invest_monthly):,}</span><br>
+    <span style='color:red'>- 월세지출: {int(expense_rent_yearly):,}</span><br>
+    <span style='color:red'>- 대출이자: {int(expense_loan_monthly):,}</span>
+    <hr style='margin:5px 0'>
+    <b>💰 굴리는 돈: {format_currency(surplus_cash_monthly)}</b>
+    </div>
+    """, unsafe_allow_html=True)
+
+# 2. 전세 결과
+with col2:
+    delta_jeonse = int(total_flow_jeonse - total_flow_monthly)
+    st.metric(label="전세 선택 시", value=f"{int(total_flow_jeonse):,} 만원", 
+              delta=f"{delta_jeonse:,} 차이")
+    st.markdown(f"""
+    <div style='font-size:14px; line-height:1.5'>
+    <span style='color:blue'>+ 투자수익: {int(income_invest_jeonse):,}</span><br>
+    <span style='color:red'>- 대출이자: {int(expense_loan_jeonse):,}</span><br>
+    <span style='color:gray; opacity:0.5'>- 월세지출: 0</span>
+    <hr style='margin:5px 0'>
+    <b>💰 굴리는 돈: {format_currency(surplus_cash_jeonse)}</b>
+    </div>
+    """, unsafe_allow_html=True)
+
+# 3. 매매 결과
+with col3:
+    delta_buying = int(total_flow_buying - total_flow_monthly)
+    st.metric(label="매매 선택 시", value=f"{int(total_flow_buying):,} 만원", 
+              delta=f"{delta_buying:,} 차이")
+    st.markdown(f"""
+    <div style='font-size:14px; line-height:1.5'>
+    <span style='color:blue'>+ 투자수익: {int(income_invest_buying):,}</span><br>
+    <span style='color:blue'>+ 집값상승: {int(income_capital_gain):,}</span><br>
+    <span style='color:red'>- 대출이자: {int(expense_loan_buying):,}</span>
+    <hr style='margin:5px 0'>
+    <b>💰 굴리는 돈: {format_currency(surplus_cash_buying)}</b>
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- 4. 최종 판단 ---
+st.divider()
+best_flow = max(total_flow_monthly, total_flow_jeonse, total_flow_buying)
+
+if best_flow == total_flow_buying:
+    st.success(f"🏆 결론: **매매**가 가장 이득입니다! (총 {int(best_flow):,}만원 이익)")
+elif best_flow == total_flow_jeonse:
+    st.warning(f"🏆 결론: **전세**가 가장 이득입니다! (총 {int(best_flow):,}만원 이익)")
+else:
+    st.info(f"🏆 결론: **월세**가 가장 이득입니다! (총 {int(best_flow):,}만원 이익)")
